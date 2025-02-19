@@ -47,7 +47,10 @@
                                                             </div>
                                                             <div class="message-content">
                                                                       <div class="sender">{{ msg.role === 'user' ? '我' : 'AI助手' }}</div>
-                                                                      <div class="content" v-html="formatMessage(msg.content)"></div>
+                                                                      <div class="content" 
+                                                                                v-html="formatMessage(msg.content)"
+                                                                                :class="{ 'streaming': isStreaming && index === currentChat.messages.length - 1 }">
+                                                                      </div>
                                                             </div>
 
                                                             <!-- 添加消息操作按钮 -->
@@ -91,6 +94,8 @@ export default {
                                         title: '新对话',
                                         messages: []
                               }],
+                              streamingMessage: '',
+                              isStreaming: false,
                     }
           },
           computed: {
@@ -166,46 +171,64 @@ export default {
                                                   throw new Error(`HTTP error! status: ${response.status}`);
                                         }
 
-                                        // 创建一个新的 ReadableStream
-                                        const reader = response.body.getReader()
-                                        let result = ''
+                                        const reader = response.body.getReader();
+                                        let result = '';
+                                        this.isStreaming = true;
+                                        this.streamingMessage = '';
 
                                         while (true) {
-                                                  const { done, value } = await reader.read()
+                                                  const { done, value } = await reader.read();
                                                   
-                                                  if (done) break
+                                                  if (done) break;
                                                   
-                                                  // 将 Uint8Array 转换为文本
-                                                  const chunk = new TextDecoder().decode(value)
-                                                  const lines = chunk.split('\n')
+                                                  const chunk = new TextDecoder().decode(value);
+                                                  const lines = chunk.split('\n');
                                                   
                                                   for (const line of lines) {
                                                             if (line.startsWith('data: ')) {
                                                                       try {
-                                                                                const data = JSON.parse(line.slice(5))
+                                                                                const data = JSON.parse(line.slice(5));
                                                                                 if (data.text) {
-                                                                                          result += data.text
-                                                                                          // 实时更新消息
-                                                                                          this.currentChat.messages[this.currentChat.messages.length - 1] = {
-                                                                                                    role: 'assistant',
-                                                                                                    content: result
-                                                                                          }
+                                                                                          result += data.text;
+                                                                                          // 直接调用打字机效果
+                                                                                          await this.typeWriter(data.text);
                                                                                 }
                                                                                 if (data.error) {
-                                                                                          console.error('AI响应错误:', data.error)
-                                                                                          return '抱歉，发生了错误，请稍后重试。'
+                                                                                          console.error('AI响应错误:', data.error);
+                                                                                          return '抱歉，发生了错误，请稍后重试。';
                                                                                 }
                                                                       } catch (e) {
-                                                                                console.error('解析响应数据失败:', e)
+                                                                                console.error('解析响应数据失败:', e);
                                                                       }
                                                             }
                                                   }
                                         }
                                         
-                                        return result
+                                        this.isStreaming = false;
+                                        return result;
                               } catch (error) {
-                                        console.error('调用AI API失败:', error)
-                                        return '抱歉，发生了错误，请稍后重试。'
+                                        console.error('调用AI API失败:', error);
+                                        this.isStreaming = false;
+                                        return '抱歉，发生了错误，请稍后重试。';
+                              }
+                    },
+
+                    async typeWriter(text) {
+                              // 将文本分割成字符数组
+                              const chars = Array.from(text);
+                              
+                              for (const char of chars) {
+                                        this.streamingMessage += char;
+                                        // 实时更新消息
+                                        this.currentChat.messages[this.currentChat.messages.length - 1] = {
+                                                  role: 'assistant',
+                                                  content: this.streamingMessage
+                                        };
+                                        // 添加延迟，创建打字效果
+                                        await new Promise(resolve => setTimeout(resolve, 20));
+                                        // 自动滚动到底部
+                                        await this.$nextTick();
+                                        this.scrollToBottom();
                               }
                     },
 
@@ -396,9 +419,8 @@ body {
 
 .message {
           margin-bottom: 32px;
-          opacity: 0;
-          transform: translateY(20px);
-          animation: messageAppear 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+          opacity: 1;
+          transform: none;
 }
 
 .message-container {
@@ -506,6 +528,9 @@ body {
           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
           margin-left: 0;
           margin-right: auto;
+          white-space: pre-wrap;
+          position: relative;
+          padding-right: 8px;
 }
 
 .message.assistant .content::before {
@@ -524,35 +549,33 @@ body {
           opacity: 1;
 }
 
-@keyframes messageAppear {
-          0% {
-                    opacity: 0;
-                    transform: translateY(20px);
-          }
-          100% {
-                    opacity: 1;
-                    transform: translateY(0);
-          }
-}
-
-.message.assistant .content {
-          white-space: pre-wrap;
-          animation: typing 0.05s steps(1), fadeIn 0.5s ease;
-          position: relative;
-}
-
-.message.assistant .content::after {
+/* 添加打字机光标效果 */
+.message.assistant .content.streaming::after {
           content: '|';
           position: absolute;
           right: 0;
-          bottom: 0;
-          opacity: 0;
-          animation: cursorBlink 1s infinite;
+          bottom: 2px;
+          color: #10a37f;
+          font-weight: 400;
+          animation: cursor-blink 0.8s infinite;
+          height: 20px;
+          line-height: 20px;
 }
 
-@keyframes cursorBlink {
+@keyframes cursor-blink {
           0%, 100% { opacity: 0; }
           50% { opacity: 1; }
+}
+
+/* 移除之前的打字机动画 */
+.message.assistant .content {
+          animation: none;
+}
+
+/* 添加消息出现的渐变效果 */
+.message {
+          opacity: 1;
+          transform: none;
 }
 
 .message-container::after {
