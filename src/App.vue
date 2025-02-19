@@ -41,13 +41,23 @@
                               <div class="chat-messages" ref="messageContainer">
                                         <div v-for="(msg, index) in currentChat.messages" :key="index"
                                                   :class="['message', msg.role]">
-                                                  <div class="message-container">
+                                                  <div class="message-container" :data-time="formatTime(msg.timestamp)">
                                                             <div class="avatar">
                                                                       <img :src="msg.role === 'user' ? userAvatar : botAvatar">
                                                             </div>
                                                             <div class="message-content">
                                                                       <div class="sender">{{ msg.role === 'user' ? '我' : 'AI助手' }}</div>
                                                                       <div class="content" v-html="formatMessage(msg.content)"></div>
+                                                            </div>
+
+                                                            <!-- 添加消息操作按钮 -->
+                                                            <div class="message-actions">
+                                                                      <button class="action-button" title="复制">
+                                                                                <i class="copy-icon">📋</i>
+                                                                      </button>
+                                                                      <button class="action-button" title="分享">
+                                                                                <i class="share-icon">↗️</i>
+                                                                      </button>
                                                             </div>
                                                   </div>
                                         </div>
@@ -214,6 +224,15 @@ export default {
                               if(confirm('确定要清空当前对话吗？')) {
                                         this.currentChat.messages = []
                               }
+                    },
+
+                    formatTime(timestamp) {
+                              if (!timestamp) return '';
+                              const date = new Date(timestamp);
+                              return date.toLocaleTimeString('zh-CN', {
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                              });
                     }
           },
           mounted() {
@@ -239,30 +258,34 @@ body {
 .chat-container {
           display: flex;
           height: 100vh;
-          background: #f7f7f8;
+          background: linear-gradient(135deg, #f6f9fc 0%, #ffffff 100%);
 }
 
 /* 侧边栏样式 */
 .sidebar {
-          width: 260px;
-          background: #202123;
+          width: 280px;
+          background: linear-gradient(180deg, #1a1c2d 0%, #2c2e3e 100%);
           color: #fff;
-          padding: 16px;
+          padding: 20px;
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 20px;
+          box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
 }
 
 .logo {
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 12px;
+          gap: 12px;
+          padding: 15px;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 12px;
+          backdrop-filter: blur(10px);
 }
 
 .logo-emoji {
-          font-size: 24px;
-          margin-right: 8px;
+          font-size: 28px;
+          filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
 }
 
 .logo span {
@@ -273,16 +296,18 @@ body {
 .new-chat {
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 12px;
-          background: #343541;
-          border-radius: 8px;
+          gap: 10px;
+          padding: 14px;
+          background: rgba(255, 255, 255, 0.08);
+          border-radius: 12px;
           cursor: pointer;
           transition: all 0.3s ease;
+          border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .new-chat:hover {
-          background: #40414f;
+          background: rgba(255, 255, 255, 0.12);
+          transform: translateY(-1px);
 }
 
 .plus-icon {
@@ -364,25 +389,56 @@ body {
 .chat-messages {
           flex: 1;
           overflow-y: auto;
-          padding: 24px;
+          padding: 30px;
+          scroll-behavior: smooth;
+          background: linear-gradient(to bottom, rgba(246, 249, 252, 0.8), rgba(255, 255, 255, 0.8));
 }
 
 .message {
-          margin-bottom: 24px;
+          margin-bottom: 32px;
+          opacity: 0;
+          transform: translateY(20px);
+          animation: messageAppear 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
 .message-container {
           display: flex;
-          gap: 16px;
-          max-width: 800px;
-          margin: 0 auto;
+          gap: 20px;
+          max-width: 900px;
+          margin-left: 24px;
+          padding: 5px 0;
+          position: relative;
 }
 
 .avatar {
-          width: 40px;
-          height: 40px;
-          border-radius: 8px;
+          width: 45px;
+          height: 45px;
+          border-radius: 16px;
           overflow: hidden;
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+          transition: all 0.3s ease;
+          position: relative;
+}
+
+.avatar::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0.3));
+          opacity: 0;
+          transition: opacity 0.3s ease;
+}
+
+.avatar:hover {
+          transform: scale(1.05) translateY(-2px);
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.avatar:hover::after {
+          opacity: 1;
 }
 
 .avatar img {
@@ -393,67 +449,232 @@ body {
 
 .message-content {
           flex: 1;
+          position: relative;
+          max-width: 80%;
 }
 
 .sender {
           font-size: 14px;
+          font-weight: 500;
           color: #666;
-          margin-bottom: 4px;
+          margin-bottom: 6px;
+          opacity: 0.8;
+          transition: opacity 0.3s ease;
+}
+
+.message:hover .sender {
+          opacity: 1;
 }
 
 .content {
-          padding: 12px 16px;
-          background: #f7f7f8;
-          border-radius: 8px;
+          padding: 18px 24px;
+          border-radius: 16px;
           font-size: 15px;
+          line-height: 1.6;
+          transition: all 0.3s ease;
+          position: relative;
+          overflow: hidden;
+}
+
+.message.user .content {
+          background: linear-gradient(135deg, #10a37f 0%, #0d8c6d 100%);
+          color: white;
+          box-shadow: 0 4px 15px rgba(16, 163, 127, 0.2);
+          margin-right: auto;
+          margin-left: 0;
+}
+
+.message.user .content::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0));
+          opacity: 0;
+          transition: opacity 0.3s ease;
+}
+
+.message.user .content:hover::before {
+          opacity: 1;
+}
+
+.message.assistant .content {
+          background: white;
+          border: 1px solid rgba(0, 0, 0, 0.08);
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+          margin-left: 0;
+          margin-right: auto;
+}
+
+.message.assistant .content::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(45deg, rgba(16, 163, 127, 0.03), transparent);
+          opacity: 0;
+          transition: opacity 0.3s ease;
+}
+
+.message.assistant .content:hover::before {
+          opacity: 1;
+}
+
+@keyframes messageAppear {
+          0% {
+                    opacity: 0;
+                    transform: translateY(20px);
+          }
+          100% {
+                    opacity: 1;
+                    transform: translateY(0);
+          }
+}
+
+.message.assistant .content {
+          white-space: pre-wrap;
+          animation: typing 0.05s steps(1), fadeIn 0.5s ease;
+          position: relative;
+}
+
+.message.assistant .content::after {
+          content: '|';
+          position: absolute;
+          right: 0;
+          bottom: 0;
+          opacity: 0;
+          animation: cursorBlink 1s infinite;
+}
+
+@keyframes cursorBlink {
+          0%, 100% { opacity: 0; }
+          50% { opacity: 1; }
+}
+
+.message-container::after {
+          content: attr(data-time);
+          position: absolute;
+          bottom: -20px;
+          font-size: 12px;
+          color: #999;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+}
+
+.message:hover .message-container::after {
+          opacity: 1;
+}
+
+.message-actions {
+          position: absolute;
+          right: -40px;
+          top: 50%;
+          transform: translateY(-50%);
+          opacity: 0;
+          transition: all 0.3s ease;
+          display: flex;
+          flex-direction: row;
+          gap: 4px;
+          background: rgba(255, 255, 255, 0.9);
+          padding: 4px;
+          border-radius: 8px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.message:hover .message-actions {
+          opacity: 1;
+          right: 10px;
+          transform: translateY(-50%);
+}
+
+.action-button {
+          width: 28px;
+          height: 28px;
+          border-radius: 6px;
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s ease;
+          color: #666;
+}
+
+.action-button:hover {
+          transform: translateY(-1px);
+          background: rgba(0, 0, 0, 0.05);
+          color: #10a37f;
+}
+
+.message.user .message-actions {
+          background: rgba(255, 255, 255, 0.9);
+}
+
+.message.user .action-button {
+          color: rgba(255, 255, 255, 0.9);
+}
+
+.message.user .action-button:hover {
+          background: rgba(255, 255, 255, 0.2);
+          color: white;
 }
 
 .input-area {
-          padding: 24px;
-          background: #fff;
-          border-top: 1px solid #e5e5e5;
+          padding: 30px;
+          background: rgba(255, 255, 255, 0.8);
+          backdrop-filter: blur(10px);
+          border-top: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .input-container {
           display: flex;
-          gap: 12px;
-          max-width: 800px;
+          gap: 15px;
+          max-width: 900px;
           margin: 0 auto;
 }
 
 .input-area textarea {
           flex: 1;
-          padding: 12px 16px;
-          border: 1px solid #e5e5e5;
-          border-radius: 8px;
+          padding: 16px 20px;
+          border: 1px solid rgba(0, 0, 0, 0.1);
+          border-radius: 12px;
           resize: none;
           font-size: 15px;
-          line-height: 1.5;
+          line-height: 1.6;
           transition: all 0.3s ease;
+          background: white;
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 }
 
 .input-area textarea:focus {
           outline: none;
           border-color: #10a37f;
-          box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.2);
+          box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.15);
 }
 
 .send-btn {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 40px;
-          height: 40px;
+          width: 50px;
+          height: 50px;
           border: none;
-          background: #10a37f;
+          background: linear-gradient(135deg, #10a37f 0%, #0d8c6d 100%);
           color: #fff;
-          border-radius: 8px;
+          border-radius: 12px;
           cursor: pointer;
           transition: all 0.3s ease;
+          box-shadow: 0 4px 15px rgba(16, 163, 127, 0.2);
 }
 
 .send-btn:hover {
-          background: #0d8c6d;
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(16, 163, 127, 0.3);
 }
 
 .send-btn:disabled {
@@ -482,11 +703,16 @@ body {
 /* 添加打字机效果 */
 .message.assistant .content {
           white-space: pre-wrap;
-          animation: typing 0.05s steps(1);
+          animation: typing 0.05s steps(1), fadeIn 0.5s ease;
 }
 
 @keyframes typing {
           from { opacity: 0.8; }
+          to { opacity: 1; }
+}
+
+@keyframes fadeIn {
+          from { opacity: 0; }
           to { opacity: 1; }
 }
 </style>
